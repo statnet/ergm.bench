@@ -1,6 +1,6 @@
 Package: ergm.bench
 Title: High-level test cases for the 'ergm' package
-Version: 0-7
+Version: 0-8
 Authors@R:
 	person("Pavel N.", "Krivitsky", role=c("aut","cre"), email="pavel@uow.edu.au", comment=c(ORCID="0000-0002-9101-3362"))
 Description: A package consisting only of data and tests, to be used in benchmarking 'ergm' and regression testing.
