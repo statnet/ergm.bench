@@ -1,0 +1,293 @@
+---
+title: "CRAN vs. DEV: Ergm.ego models for ARTnet data"
+author: "Martina Morris"
+date: "`r Sys.Date()`"
+output:
+    html_document:
+        toc: true
+        toc_depth: 3
+        toc_float: true
+        number_sections: true
+        code_folding: hide
+description: "3 network model: main/casl/inst"
+---
+
+```{r setup, cache = F}
+knitr::opts_chunk$set(error = TRUE)
+```
+
+No ergm control parameters set, so default package performance can be observed.  `ergm.ego` ppopsize is set.
+
+This code assumes you already have:  
+1. Access to the ARTnet Data repo
+2. Made the DSdata using the [MakeDSdata](https://github.com/statnet/Makedsdata) package
+
+# Preliminaries
+
+## Packages (for CRAN version)
+```{r libraryCRAN}
+
+# these don't change
+library(survey)
+library(tidyverse)
+
+# these do change, make sure these are the CRAN versions
+library(network)
+library(statnet.common)
+library(ergm)
+library(ergm.ego)
+
+# use this for debugging if needed.
+#trace(ergm, quote(save(list=ls(), file="ergm_dump.rda")))
+
+```
+
+## Setup (will be used for both CRAN and DEV)
+
+```{r setup}
+## setwd
+
+setwd(here::here("tests","mm"))
+
+## Set # replicates
+reps = 10
+
+## Set ppopsize
+
+ppop = 15000
+
+## We analyze complete cases only here.  Fcn to create the datasets.
+
+rm_nas <- function(orig_egodat){
+  complete_egodat <- orig_egodat
+  new_egos <- orig_egodat$egos
+  new_alters <- orig_egodat$alter
+  c_ego_index <- complete.cases(new_egos)
+  new_egos <- new_egos[c_ego_index, ]
+  new_alters <- new_alters[complete.cases(new_alters), ]
+  complete_egodat$egos <- new_egos
+  complete_egodat$alters <- new_alters
+  complete_egodat$egoWt <- new_egos$egoWt[c_ego_index]
+  return(complete_egodat)
+}
+
+## Run ego_weights.R first if WAweights.rda is not available
+
+if(!file.exists("WAweights.rda")){
+  source("ego_weights.R")
+}
+
+## WA state weighting
+WAwt <- readRDS(file = "WAweights.rds")
+WAwt$ego.id <- WAwt$AMIS_ID
+WAwt$AMIS_ID <- NULL
+
+all_ego_data <- DSdata::egodata_active
+homog_control <- "_homogDiss"
+
+## Create egodata for each network
+
+ego_main <- rm_nas(all_ego_data$main)
+ego_wt_m <- dplyr::left_join(ego_main$egos, WAwt, by = "ego.id")
+ego_main$egoWt <- ego_wt_m$weight
+
+ego_casl <- rm_nas(all_ego_data$casl)
+ego_wt <- dplyr::left_join(ego_casl$egos, WAwt, by = "ego.id")
+ego_casl$egoWt <- ego_wt$weight
+
+ego_inst <- rm_nas(all_ego_data$inst)
+ego_wt_i <- dplyr::left_join(ego_inst$egos, WAwt, by = "ego.id")
+ego_inst$egoWt <- ego_wt_i$weight
+
+# Define the 3 network models
+
+model_main <- ego_main ~ edges +
+  nodefactor("deg.casl", levels = -1) +
+  nodefactor("race", levels = -3) +
+  nodefactor("region", levels = -2) +
+  concurrent +
+  nodematch("race", diff=TRUE) +
+  absdiff("sqrt.age") +
+  offset(nodematch("role.class", 
+                   diff = TRUE, 
+                   levels = c(1, 2)))
+
+model_casl <- ego_casl ~ edges +
+  nodefactor("deg.main", levels = -I(0)) +
+  nodefactor("race", levels = -3) +
+  nodefactor("region", levels = -2) +
+  concurrent +
+  nodematch("race", diff=TRUE) +
+  absdiff("sqrt.age") +
+  offset(nodematch("role.class", 
+                   diff = TRUE, 
+                   levels = 1:2))
+
+model_inst <- ego_inst ~ edges + 
+  nodefactor("deg.main", levels = I(0)) +
+  nodefactor("deg.casl", levels = I(0)) +
+  nodefactor("risk.grp", levels = -5) +
+  nodefactor("race", levels = -3) + 
+  nodefactor("region", levels = -2) +
+  nodematch("race", diff=TRUE) +
+  absdiff("sqrt.age") +
+  offset(nodematch("role.class", 
+                   diff = TRUE, 
+                   levels = 1:2))
+
+```
+
+# CRAN fits
+
+## Main model
+
+```{r main}
+
+est.time.main_cran <- rep(NA, reps)
+for (i in 1:10) {
+  
+startTime <- Sys.time()
+main_fit <- ergm.ego(model_main,
+                     offset.coef = rep(-Inf, 2),
+                     control = control.ergm.ego(ppopsize=ppop)
+                     )
+est.time.main_cran[i] <- (Sys.time() - startTime)
+}
+
+est.time.main_cran
+
+```
+
+## Casual Model
+
+```{r casual}
+
+est.time.casl_cran <- rep(NA, reps)
+for (i in 1:10) {
+  
+startTime <- Sys.time()
+casl_fit <- ergm.ego(model_casl,
+                     offset.coef = rep(-Inf, 2),
+                     control = control.ergm.ego(ppopsize=ppop)
+                     )
+est.time.casl_cran[i] <- (Sys.time() - startTime)
+}
+
+est.time.casl_cran
+```
+
+## Instantaneous Model
+
+```{r inst}
+
+# use this for debugging if needed.
+#trace(ergm, quote(save(list=ls(), file="ergm_dump.rda")))
+
+est.time.inst_cran <- rep(NA, reps)
+for (i in 1:10) {
+  
+startTime <- Sys.time()
+inst_fit <- ergm.ego(model_inst,
+                     offset.coef = rep(-Inf, 2),
+                     control = control.ergm.ego(ppopsize=ppop)
+                     )
+est.time.inst_cran[i] <- (Sys.time() - startTime)
+}
+
+est.time.inst_cran
+```
+
+# DEV fits
+
+## Packages (for DEV version)
+```{r libraryDEV}
+
+# detach CRAN packages
+detach("package:ergm.ego", unload = TRUE)
+detach("package:ergm", unload = TRUE)
+detach("package:network", unload = TRUE)
+detach("package:statnet.common", unload = TRUE)
+
+# install dev versions if necessary
+source("install_dev_pkgs.R")
+
+# make sure these are the DEV versions
+library(network, lib.loc = "~/R-dev")
+library(statnet.common, lib.loc = "~/R-dev")
+library(ergm, lib.loc = "~/R-dev")
+library(ergm.ego) #doesn't change
+```
+
+## Main model
+
+```{r main}
+
+est.time.main_dev <- rep(NA, reps)
+for (i in 1:10) {
+  
+startTime <- Sys.time()
+main_fit <- ergm.ego(model_main,
+                     offset.coef = rep(-Inf, 2),
+                     control = control.ergm.ego(ppopsize=ppop)
+                     )
+est.time.main_dev[i] <- (Sys.time() - startTime)
+}
+
+est.time.main_dev
+
+```
+
+## Casual Model
+
+```{r casual}
+
+est.time.casl_dev <- rep(NA, reps)
+for (i in 1:10) {
+  
+startTime <- Sys.time()
+casl_fit <- ergm.ego(model_casl,
+                     offset.coef = rep(-Inf, 2),
+                     control = control.ergm.ego(ppopsize=ppop)
+                     )
+est.time.casl_dev[i] <- (Sys.time() - startTime)
+}
+
+est.time.casl_dev
+```
+
+## Instantaneous Model
+
+```{r inst}
+
+est.time.inst_dev <- rep(NA, reps)
+for (i in 1:10) {
+  
+startTime <- Sys.time()
+inst_fit <- ergm.ego(model_inst,
+                     offset.coef = rep(-Inf, 2),
+                     control = control.ergm.ego(ppopsize=ppop)
+                     )
+est.time.inst_dev[i] <- (Sys.time() - startTime)
+}
+
+est.time.inst_dev
+```
+
+# Compare times
+
+``` {r compare}
+times <- cbind(main.cran = est.time.main_cran,
+               main.dev = est.time.main_dev,
+               casl.cran = est.time.casl_cran,
+               casl.dev = est.time.casl_dev,
+               inst.cran = est.time.inst_cran,
+               inst.dev = est.time.inst_dev)
+apply(times,2,"mean")
+apply(times,2,"sd")
+save(times, file = here::here("tests", "off","SpeedTests" "times.rda"))
+
+#main.times <- cbind(CRAN=est.time.main_cran,
+                    DEV=est.time.main_dev)
+#boxplot(main.times,
+        main = "Main network",
+        sub = paste("ppopsize =", ppop))
