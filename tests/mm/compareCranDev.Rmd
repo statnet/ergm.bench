@@ -102,7 +102,7 @@ ego_inst$egoWt <- ego_wt_i$weight
 # Define the 3 network models
 
 model_main <- ego_main ~ edges +
-  nodefactor("deg.casl", levels = -1) +
+  nodefactor("deg.casl", levels = I(0)) +
   nodefactor("race", levels = -3) +
   nodefactor("region", levels = -2) +
   concurrent +
@@ -113,7 +113,7 @@ model_main <- ego_main ~ edges +
                    levels = c(1, 2)))
 
 model_casl <- ego_casl ~ edges +
-  nodefactor("deg.main", levels = -I(0)) +
+  nodefactor("deg.main", levels = I(0)) +
   nodefactor("race", levels = -3) +
   nodefactor("region", levels = -2) +
   concurrent +
