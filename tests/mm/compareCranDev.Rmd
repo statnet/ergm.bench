@@ -42,9 +42,9 @@ library(ergm.ego)
 
 ```
 
-## Setup (will be used for both CRAN and DEV)
+## Preliminaries (will be used for both CRAN and DEV)
 
-```{r setup}
+```{r preliminaries}
 ## setwd
 
 setwd(here::here("tests","mm"))
@@ -217,7 +217,7 @@ library(ergm.ego) #doesn't change
 
 ## Main model
 
-```{r main}
+```{r maindev}
 
 est.time.main_dev <- rep(NA, reps)
 for (i in 1:10) {
@@ -236,7 +236,7 @@ est.time.main_dev
 
 ## Casual Model
 
-```{r casual}
+```{r casualdev}
 
 est.time.casl_dev <- rep(NA, reps)
 for (i in 1:10) {
@@ -254,7 +254,7 @@ est.time.casl_dev
 
 ## Instantaneous Model
 
-```{r inst}
+```{r instdev}
 
 est.time.inst_dev <- rep(NA, reps)
 for (i in 1:10) {
@@ -281,18 +281,16 @@ times <- cbind(main.cran = est.time.main_cran,
                inst.dev = est.time.inst_dev)
 apply(times,2,"mean")
 apply(times,2,"sd")
-save(times, file = here::here("tests", "off","SpeedTests" "times.rda"))
+save(times, file = here::here("tests","mm","times.rda")) # note we've setwd above
 
 boxplot(times,
         main = "Main/Casl/Inst network Estimation",
         sub = paste("ppopsize =", ppop, ";",
                     "System =", system2("uname", stdout = TRUE),
-                    "(", system2("uname", args = "-n", stdout = TRUE), ")")
+                    "(", system2("uname", args = "-n", stdout = TRUE), ")"))
                     
-                    , "(", system("uname -n"), ")"))
-
 #main.times <- cbind(CRAN=est.time.main_cran,
-                    DEV=est.time.main_dev)
+#                    DEV=est.time.main_dev)
 #boxplot(main.times,
-        main = "Main network",
-        sub = paste("ppopsize =", ppop))
+#        main = "Main network",
+#        sub = paste("ppopsize =", ppop))
