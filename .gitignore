@@ -3,7 +3,6 @@ doc
 # History files
 .Rhistory
 .Rapp.history
-
 # Session Data files
 .RData
 .RSession
@@ -80,3 +79,4 @@ dkms.conf
 *~
 *.bak
 .Rproj.user
+*.Rproj
