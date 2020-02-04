@@ -180,9 +180,6 @@ est.time.casl_cran
 
 ```{r inst}
 
-# use this for debugging if needed.
-#trace(ergm, quote(save(list=ls(), file="ergm_dump.rda")))
-
 est.time.inst_cran <- rep(NA, reps)
 for (i in 1:10) {
   
@@ -208,7 +205,7 @@ detach("package:ergm", unload = TRUE)
 detach("package:network", unload = TRUE)
 detach("package:statnet.common", unload = TRUE)
 
-# install dev versions if necessary
+# install dev versions if necessary -- needs stored GH credentials
 source("install_dev_pkgs.R")
 
 # make sure these are the DEV versions
@@ -285,6 +282,14 @@ times <- cbind(main.cran = est.time.main_cran,
 apply(times,2,"mean")
 apply(times,2,"sd")
 save(times, file = here::here("tests", "off","SpeedTests" "times.rda"))
+
+boxplot(times,
+        main = "Main/Casl/Inst network Estimation",
+        sub = paste("ppopsize =", ppop, ";",
+                    "System =", system2("uname", stdout = TRUE),
+                    "(", system2("uname", args = "-n", stdout = TRUE), ")")
+                    
+                    , "(", system("uname -n"), ")"))
 
 #main.times <- cbind(CRAN=est.time.main_cran,
                     DEV=est.time.main_dev)
