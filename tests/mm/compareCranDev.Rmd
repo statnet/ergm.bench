@@ -144,7 +144,7 @@ model_inst <- ego_inst ~ edges +
 ```{r main}
 
 est.time.main_cran <- rep(NA, reps)
-for (i in 1:10) {
+for (i in 1:reps) {
   
 startTime <- Sys.time()
 main_fit <- ergm.ego(model_main,
@@ -163,7 +163,7 @@ est.time.main_cran
 ```{r casual}
 
 est.time.casl_cran <- rep(NA, reps)
-for (i in 1:10) {
+for (i in 1:reps) {
   
 startTime <- Sys.time()
 casl_fit <- ergm.ego(model_casl,
@@ -181,7 +181,7 @@ est.time.casl_cran
 ```{r inst}
 
 est.time.inst_cran <- rep(NA, reps)
-for (i in 1:10) {
+for (i in 1:reps) {
   
 startTime <- Sys.time()
 inst_fit <- ergm.ego(model_inst,
@@ -220,10 +220,10 @@ library(ergm.ego) #doesn't change
 ```{r maindev}
 
 est.time.main_dev <- rep(NA, reps)
-for (i in 1:10) {
+for (i in 1:reps) {
   
 startTime <- Sys.time()
-main_fit <- ergm.ego(model_main,
+main_fit_dev <- ergm.ego(model_main,
                      offset.coef = rep(-Inf, 2),
                      control = control.ergm.ego(ppopsize=ppop)
                      )
@@ -239,10 +239,10 @@ est.time.main_dev
 ```{r casualdev}
 
 est.time.casl_dev <- rep(NA, reps)
-for (i in 1:10) {
+for (i in 1:reps) {
   
 startTime <- Sys.time()
-casl_fit <- ergm.ego(model_casl,
+casl_fit_dev <- ergm.ego(model_casl,
                      offset.coef = rep(-Inf, 2),
                      control = control.ergm.ego(ppopsize=ppop)
                      )
@@ -257,10 +257,10 @@ est.time.casl_dev
 ```{r instdev}
 
 est.time.inst_dev <- rep(NA, reps)
-for (i in 1:10) {
+for (i in 1:reps) {
   
 startTime <- Sys.time()
-inst_fit <- ergm.ego(model_inst,
+inst_fit_dev <- ergm.ego(model_inst,
                      offset.coef = rep(-Inf, 2),
                      control = control.ergm.ego(ppopsize=ppop)
                      )
@@ -281,7 +281,15 @@ times <- cbind(main.cran = est.time.main_cran,
                inst.dev = est.time.inst_dev)
 apply(times,2,"mean")
 apply(times,2,"sd")
-save(times, file = here::here("tests","mm","times.rda")) # note we've setwd above
+
+save(times, file = here::here("tests","mm","times.rda")) 
+save(fit_main_cran = main_fit, 
+     fit_casl_cran = casl_fit, 
+     fit_inst_cran = inst_fit, 
+     fit_main_dev = main_fit_dev,
+     fit_casl_dev = casl_fit_dev,
+     fit_inst_dev = inst_fit_dev,
+     file = here:here(("tests","mm","fits.rda"))
 
 boxplot(times,
         main = "Main/Casl/Inst network Estimation",
@@ -289,8 +297,3 @@ boxplot(times,
                     "System =", system2("uname", stdout = TRUE),
                     "(", system2("uname", args = "-n", stdout = TRUE), ")"))
                     
-#main.times <- cbind(CRAN=est.time.main_cran,
-#                    DEV=est.time.main_dev)
-#boxplot(main.times,
-#        main = "Main network",
-#        sub = paste("ppopsize =", ppop))
