@@ -1,0 +1,167 @@
+---
+title: "MPLE sampling test"
+author: "Martina Morris"
+date: "`r Sys.Date()`"
+output:
+    html_document:
+        toc: true
+        toc_depth: 2
+        toc_float: true
+        code_folding: hide
+description: "testing new MPLE sampling"
+---
+
+
+```{r setup, cache = F}
+knitr::opts_chunk$set(error = TRUE, message = FALSE)
+```
+Comparing erm master to commit 8fce4b2226766a1c869e2305fe24ea5be6d3143d, before and after the MPLE dyad sampling change.
+
+All estimation controls set to defaults (except for parallel).
+
+## Packages 
+```{r library}
+
+# Make sure you start with a clean namespace and grab the default .libPaths
+loadedNamespaces()
+defaultPaths <- .libPaths()
+
+# these can be CRAN versions
+library(tidyverse)
+library(here)
+library(latticeExtra)
+
+
+# Install dev packages if necessary
+# source(here("tests", "mm", "install_dev_pkgs.R"))
+
+# Make ~/R-dev 1st position in libPath
+devPath <- "~/R-dev"
+.libPaths(c(devPath, defaultPaths))
+.libPaths()
+
+library(ergm.ego) # will bring in dev packages first
+
+pkgs <- sessioninfo::package_info(pkgs = c("network","statnet.common","ergm","ergm.ego"),
+                                  dependencies = FALSE)
+print(pkgs)
+```
+
+```{r build}
+# use this for debugging if needed.
+#trace(ergm, quote(save(list=ls(), file="ergm_dump.rda")))
+
+# Parallel control parameters, don't use all cores
+np <- max(0, parallel::detectCores() - 4)
+if (np==0) ptype=NULL else ptype='PSOCK' # for setting parallel.type
+
+## Set ppop size and construction
+
+ppop = 100000
+ppopwt = 'round' # This will give us exact netsize
+
+## Read in data
+
+egodata_active <- DSdata::egodata_active_new
+
+ego_main <- na.omit(egodata_active$main, 
+                    relevant = c("ego.id", "race.cat3", "region", 
+                                 "age.grp", "sqrt.age", "deg.casl", "role.type"))
+## Define model
+
+model_main <- ego_main ~ edges +
+  nodefactor("race.cat3", levels = -3) +
+  nodefactor("region", levels = -2) +
+  nodefactor("age.grp", levels = -1) +
+  nodematch("race.cat3", diff=TRUE) +
+  absdiff("sqrt.age") +
+  concurrent +
+  nodefactor("deg.casl", levels = I(0)) +
+  offset(nodematch("role.type", 
+                   diff = TRUE, 
+                   levels = c(1, 2)))
+offset_main <- rep(-Inf, 2)
+
+control_main <- control.ergm.ego(ppopsize=ppop, 
+                                 ppop.wt = ppopwt,
+                                 ergm.control = control.ergm(parallel = np,
+                                                             parallel.type=ptype))
+```
+
+# Fits -- Master
+```{r fit}
+
+reps = 10
+
+## target stats
+summary(model_main, scaleto = ppop)
+
+## estimate
+etime1 <- rep(NA, reps)
+
+for (i in 1:reps) {
+  
+startTime <- Sys.time()
+fit_main <- ergm.ego(model_main,
+                       offset.coef = offset_main,
+                       control = control_main)
+etime1[i] <- (Sys.time() - startTime)
+}
+
+print(paste("Estimation time:", round(etime1,2), "seconds"))
+
+boxplot(etime1)
+
+run1 <- list(c(pkgs, etime1))
+
+```
+
+# Change packages
+
+```{r}
+# detach packages in reverse order of dependence
+detach("package:ergm.ego", unload = TRUE)
+detach("package:ergm", unload = TRUE)
+detach("package:network", unload = TRUE)
+detach("package:statnet.common", unload = TRUE)
+
+# install test versions if necessary -- needs stored GH credentials
+#source(here("tests", "mm", "install_dev_pkgs.R"))
+
+# Make ~/R-Master 1st position in libPath
+testPath <- "~/R-test"
+.libPaths(c(testPath, defaultPaths))
+.libPaths()
+
+library(ergm.ego) #doesn't change
+
+pkgs <- sessioninfo::package_info(pkgs = c("network","statnet.common","ergm","ergm.ego"),
+                                  dependencies = FALSE)
+print(pkgs)
+```
+
+# Fits - commit 8fce4b2226766a1c869e2305fe24ea5be6d3143d
+```{r master}
+etime2 <- rep(NA, reps)
+
+for (i in 1:reps) {
+  
+startTime <- Sys.time()
+fit_main <- ergm.ego(model_main,
+                       offset.coef = offset_main,
+                       control = control_main)
+etime2[i] <- (Sys.time() - startTime)
+}
+
+print(paste("Estimation time:", round(etime2,2), "seconds"))
+
+boxplot(etime2)
+
+run2 <- list(c(pkgs, etime2))
+
+out <- list(c(run1, run2))
+saveRDS(out, file = here("tests", "mm", "etime_ergm_comp.RDS"))
+
+boxplot(etime1, etime2)
+
+```
