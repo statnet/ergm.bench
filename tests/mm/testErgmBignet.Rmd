@@ -15,41 +15,37 @@ description: "testing new MPLE sampling"
 ```{r setup, cache = F}
 knitr::opts_chunk$set(error = TRUE, message = FALSE)
 ```
-Comparing erm master to commit 8fce4b2226766a1c869e2305fe24ea5be6d3143d, before and after the MPLE dyad sampling change.
+Comparing 3 ergm package versions:
+
+* commit 8fce4b222 (before MPLE sampling changes)
+* master public
+* dev private
 
 All estimation controls set to defaults (except for parallel).
 
 ## Packages 
-```{r library}
+```{r librarySetup}
 
-# Make sure you start with a clean namespace and grab the default .libPaths
+# Make sure you start with a clean namespace, grab the default .libPaths, 
+# set paths for the comparisons
 loadedNamespaces()
 defaultPaths <- .libPaths()
+testPath <- "~/R-test"
+mpubPath <- "~/R-mpub"
+devPath <- "~/R-devp"
 
 # these can be CRAN versions
 library(tidyverse)
 library(here)
 library(latticeExtra)
-
-
-# Install dev packages if necessary
-# source(here("tests", "mm", "install_dev_pkgs.R"))
-
-# Make ~/R-dev 1st position in libPath
-devPath <- "~/R-dev"
-.libPaths(c(devPath, defaultPaths))
-.libPaths()
-
-library(ergm.ego) # will bring in dev packages first
-
-pkgs <- sessioninfo::package_info(pkgs = c("network","statnet.common","ergm","ergm.ego"),
-                                  dependencies = FALSE)
-print(pkgs)
 ```
 
-```{r build}
+```{r modelSpecs}
 # use this for debugging if needed.
 #trace(ergm, quote(save(list=ls(), file="ergm_dump.rda")))
+
+# Replications for comparison
+reps = 1
 
 # Parallel control parameters, don't use all cores
 np <- max(0, parallel::detectCores() - 4)
@@ -60,13 +56,7 @@ if (np==0) ptype=NULL else ptype='PSOCK' # for setting parallel.type
 ppop = 100000
 ppopwt = 'round' # This will give us exact netsize
 
-## Read in data
 
-egodata_active <- DSdata::egodata_active_new
-
-ego_main <- na.omit(egodata_active$main, 
-                    relevant = c("ego.id", "race.cat3", "region", 
-                                 "age.grp", "sqrt.age", "deg.casl", "role.type"))
 ## Define model
 
 model_main <- ego_main ~ edges +
@@ -82,16 +72,36 @@ model_main <- ego_main ~ edges +
                    levels = c(1, 2)))
 offset_main <- rep(-Inf, 2)
 
+```
+
+# Test package (ergm@8fce4b222)
+```{r testpkg}
+
+# Install test packages if necessary
+# source(here("tests", "mm", "install_test_pkgs.R"))
+
+# Make ~/R-test 1st position in libPath
+.libPaths(c(testPath, defaultPaths))
+.libPaths()
+
+library(ergm.ego) # will bring in test packages first
+
+pkgs <- sessioninfo::package_info(pkgs = c("network","statnet.common","ergm","ergm.ego"),
+                                  dependencies = FALSE)
+print(pkgs)
+
+## Read in data and define controls, this will be used for all fits
+
+egodata_active <- DSdata::egodata_active_new
+
+ego_main <- na.omit(egodata_active$main, 
+                    relevant = c("ego.id", "race.cat3", "region", 
+                                 "age.grp", "sqrt.age", "deg.casl", "role.type"))
+
 control_main <- control.ergm.ego(ppopsize=ppop, 
                                  ppop.wt = ppopwt,
                                  ergm.control = control.ergm(parallel = np,
                                                              parallel.type=ptype))
-```
-
-# Fits -- Master
-```{r fit}
-
-reps = 10
 
 ## target stats
 summary(model_main, scaleto = ppop)
@@ -116,7 +126,7 @@ run1 <- list(c(pkgs, etime1))
 
 ```
 
-# Change packages
+# Unload packages
 
 ```{r}
 # detach packages in reverse order of dependence
@@ -124,13 +134,16 @@ detach("package:ergm.ego", unload = TRUE)
 detach("package:ergm", unload = TRUE)
 detach("package:network", unload = TRUE)
 detach("package:statnet.common", unload = TRUE)
+```
+
+# Master public
+```{r mpub}
 
 # install test versions if necessary -- needs stored GH credentials
-#source(here("tests", "mm", "install_dev_pkgs.R"))
+#source(here("tests", "mm", "install_mpub_pkgs.R"))
 
 # Make ~/R-Master 1st position in libPath
-testPath <- "~/R-test"
-.libPaths(c(testPath, defaultPaths))
+.libPaths(c(mpubPath, defaultPaths))
 .libPaths()
 
 library(ergm.ego) #doesn't change
@@ -138,10 +151,7 @@ library(ergm.ego) #doesn't change
 pkgs <- sessioninfo::package_info(pkgs = c("network","statnet.common","ergm","ergm.ego"),
                                   dependencies = FALSE)
 print(pkgs)
-```
 
-# Fits - commit 8fce4b2226766a1c869e2305fe24ea5be6d3143d
-```{r master}
 etime2 <- rep(NA, reps)
 
 for (i in 1:reps) {
@@ -163,5 +173,58 @@ out <- list(c(run1, run2))
 saveRDS(out, file = here("tests", "mm", "etime_ergm_comp.RDS"))
 
 boxplot(etime1, etime2)
+
+```
+
+# Unload packages
+
+```{r}
+# detach packages in reverse order of dependence
+detach("package:ergm.ego", unload = TRUE)
+detach("package:ergm", unload = TRUE)
+detach("package:network", unload = TRUE)
+detach("package:statnet.common", unload = TRUE)
+```
+
+# Dev private
+```{r devp}
+
+# install test versions if necessary -- needs stored GH credentials
+#source(here("tests", "mm", "install_devp_pkgs.R"))
+
+# Make ~/R-Master 1st position in libPath
+.libPaths(c(devPath, defaultPaths))
+.libPaths()
+
+library(ergm.ego) #doesn't change
+
+pkgs <- sessioninfo::package_info(pkgs = c("network","statnet.common","ergm","ergm.ego"),
+                                  dependencies = FALSE)
+print(pkgs)
+
+etime3 <- rep(NA, reps)
+
+for (i in 1:reps) {
+  
+startTime <- Sys.time()
+fit_main <- ergm.ego(model_main,
+                       offset.coef = offset_main,
+                       control = control_main)
+etime3[i] <- (Sys.time() - startTime)
+}
+
+print(paste("Estimation time:", round(etime3,2), "seconds"))
+
+boxplot(etime3)
+
+run3 <- list(c(pkgs, etime2))
+
+out <- list(c(test8fce4b222 = run1, 
+              masterPublic = run2, 
+              devPrivate = run3))
+saveRDS(out, file = here("tests", "mm", "etime_ergm_comp.RDS"))
+
+boxplot(list(etime1, etime2, etime3),
+        names = c("8fce4b222", "masterPubic", "devPrivate"))
 
 ```
