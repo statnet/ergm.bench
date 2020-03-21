@@ -3,7 +3,7 @@
 # Dev private branches
 
 devtools::dev_mode(path = '~/R-devpriv')
-remotes::install_github(c("statnet/ergm-private@dev"))#, #depends = statnet.common, network
+remotes::install_github(c("statnet/ergm-private", upgrade = T)) #, #depends = statnet.common, network
 # 
 #                           "statnet/tergm-private@dev", #616fdfd24 depends = networkDynamic
 #                           "statnet/ergm.ego@master",

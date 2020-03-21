@@ -3,7 +3,7 @@
 # Master public branches
 
 devtools::dev_mode(path = '~/R-mpub')
-remotes::install_github(c("statnet/ergm@dmaster"))#, #depends = statnet.common, network
+remotes::install_github(c("statnet/ergm@master", upgrade = T))#, #depends = statnet.common, network
 # 
 #                           "statnet/tergm@master", #616fdfd24 depends = networkDynamic
 #                           "statnet/ergm.ego@master",

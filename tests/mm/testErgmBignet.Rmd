@@ -32,7 +32,7 @@ loadedNamespaces()
 defaultPaths <- .libPaths()
 testPath <- "~/R-test"
 mpubPath <- "~/R-mpub"
-devPath <- "~/R-devp"
+devPath <- "~/R-devpriv"
 
 # these can be CRAN versions
 library(tidyverse)
@@ -45,7 +45,7 @@ library(latticeExtra)
 #trace(ergm, quote(save(list=ls(), file="ergm_dump.rda")))
 
 # Replications for comparison
-reps = 1
+reps = 10
 
 # Parallel control parameters, don't use all cores
 np <- max(0, parallel::detectCores() - 4)
@@ -122,7 +122,7 @@ print(paste("Estimation time:", round(etime1,2), "seconds"))
 
 boxplot(etime1)
 
-run1 <- list(c(pkgs, etime1))
+run1 <- list(pkgs = pkgs, time=etime1)
 
 ```
 
@@ -133,7 +133,7 @@ run1 <- list(c(pkgs, etime1))
 detach("package:ergm.ego", unload = TRUE)
 detach("package:ergm", unload = TRUE)
 detach("package:network", unload = TRUE)
-detach("package:statnet.common", unload = TRUE)
+unloadNamespace("statnet.common")
 ```
 
 # Master public
@@ -167,7 +167,7 @@ print(paste("Estimation time:", round(etime2,2), "seconds"))
 
 boxplot(etime2)
 
-run2 <- list(c(pkgs, etime2))
+run2 <- list(pkgs = pkgs, time=etime2)
 
 out <- list(c(run1, run2))
 saveRDS(out, file = here("tests", "mm", "etime_ergm_comp.RDS"))
@@ -183,19 +183,20 @@ boxplot(etime1, etime2)
 detach("package:ergm.ego", unload = TRUE)
 detach("package:ergm", unload = TRUE)
 detach("package:network", unload = TRUE)
-detach("package:statnet.common", unload = TRUE)
+unloadNamespace("statnet.common")
 ```
 
 # Dev private
 ```{r devp}
 
 # install test versions if necessary -- needs stored GH credentials
-#source(here("tests", "mm", "install_devp_pkgs.R"))
+# source(here("tests", "mm", "install_devp_pkgs.R"))
 
 # Make ~/R-Master 1st position in libPath
 .libPaths(c(devPath, defaultPaths))
 .libPaths()
 
+library(ergm)
 library(ergm.ego) #doesn't change
 
 pkgs <- sessioninfo::package_info(pkgs = c("network","statnet.common","ergm","ergm.ego"),
@@ -217,14 +218,15 @@ print(paste("Estimation time:", round(etime3,2), "seconds"))
 
 boxplot(etime3)
 
-run3 <- list(c(pkgs, etime2))
+run3 <- list(pkgs = pkgs, time=etime2)
 
 out <- list(c(test8fce4b222 = run1, 
               masterPublic = run2, 
               devPrivate = run3))
 saveRDS(out, file = here("tests", "mm", "etime_ergm_comp.RDS"))
 
-boxplot(list(etime1, etime2, etime3),
+boxplot(etime1, etime2, etime3,
+        at = c(1,2,3),
         names = c("8fce4b222", "masterPubic", "devPrivate"))
 
 ```
